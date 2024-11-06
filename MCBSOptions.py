@@ -48,8 +48,38 @@ for i in range(min(10, num_simulations)):
     #Plots i'th simulated asset price path. X-axis is time from 0 to expiration T, y-axis asset price. Lw = line width, alpha = transparency
     #np.linspace generates array of time_steps + 1, evenly spaced values between 0 and T, representing time points at which the asset is simulated
     plt.plot(np.linspace(0, T, time_steps + 1), simulated_paths[i], lw=0.8, alpha=0.7) 
+
+# Title and labels
 plt.title('Simulated Asset Price Paths') 
 plt.xlabel('Time to Expiration (Years)') 
 plt.ylabel('Asset Price')
 plt.grid(True)
+
+# Add bold line at strike price (K)
+plt.axhline(y=K, color='red', linewidth=0.5, linestyle='--', label=f'Strike Price (K) = {K}')
+
+# Add text label for K (strike price)
+plt.text(T, K, 'K', color='red', fontsize=12, verticalalignment='bottom', horizontalalignment='right', fontweight='bold')
+
+# Display parameter values on the plot
+param_text = (
+    f"S0 (Spot Price)= {S0}\n"
+    f"K (Strike Price) = {K}\n"
+    f"T (Time to Expiraiton) = {T}\n"
+    f"R (Risk-Free Rate) = {r}\n"
+    f"σ (Volatility) = {sigma}\n"
+    f"Simulations = {num_simulations}\n"
+    f"Time Steps = {time_steps}"
+)
+
+plt.subplots_adjust(right=0.75)  
+plt.text(1.05, 0.95, param_text, ha='left', va='top', transform=plt.gca().transAxes,
+         fontsize=10, fontweight='bold', bbox=dict(facecolor='white', edgecolor='black', boxstyle='round,pad=0.3'))
+
+# Add the estimated option prices to the plot
+plt.text(1.05, 0.65, f"Call Option Price: {call_option_price:.2f}", ha='left', va='top', transform=plt.gca().transAxes, fontsize=12, fontweight='bold', color='green')
+plt.text(1.05, 0.60, f"Put Option Price: {put_option_price:.2f}", ha='left', va='top', transform=plt.gca().transAxes, fontsize=12, fontweight='bold', color='red')
+
+
+# Show plot
 plt.show()
