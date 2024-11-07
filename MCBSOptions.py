@@ -1,5 +1,6 @@
 import numpy as np 
 import matplotlib.pyplot as plt
+from scipy.stats import norm
 
 #Parameters 
 S0 = 100 # Initial asset price 
@@ -18,6 +19,7 @@ put_payoffs = []
 #Store simulated asset price paths for visualisation 
 simulated_paths = []
 
+#MONTE CARLO SIMULATION
 #Loop through simulations
 for _ in range(num_simulations): 
     S = S0 #for each simulation reset S to initial asset price
@@ -36,15 +38,34 @@ for _ in range(num_simulations):
     #append current path simulation to list of simulated paths
     simulated_paths.append(path)
 
+#BLACK SCHOLES
+def black_scholes_call(S0, K, T, r, sigma): 
+    d1 = (np.log(S0/K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
+    d2 = d1 - sigma * np.sqrt(T) 
+    call_price = S0 * norm.cdf(d1) - K * np.exp(-r * T) * norm.cdf(d2)
+    return call_price
+
+def black_scholes_put(S0, K, T, r, sigma): 
+    d1 = (np.log(S0/K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
+    d2 = d1 - sigma * np.sqrt(T) 
+    put_price = K * np.exp(-r * T) * norm.cdf(-d2) - S0 * norm.cdf(-d1)
+    return put_price
+
 #Calculate option price
-call_option_price = np.exp(-r * T) * np.mean(call_payoffs) 
-put_option_price = np.exp(-r * T) * np.mean(put_payoffs)
+mc_call_price = np.exp(-r * T) * np.mean(call_payoffs) 
+mc_put_price = np.exp(-r * T) * np.mean(put_payoffs)
+bs_call_price = black_scholes_call(S0, K, T, r, sigma)
+bs_put_price = black_scholes_put(S0, K, T, r, sigma)
 
-print("Estimated Call Option Price: ", call_option_price)
-print("Estimated Put Option Price: ", put_option_price)
+print(f"Black-Scholes Call Option Price:  {bs_call_price:.2f}")
+print(f"Black-Scholes Put Option Price:  {bs_put_price:.2f}")
 
+print(f"Monte Carlo Call Option Price: {mc_call_price:.2f}")
+print(f"Monte Carlo Put Option Price: {mc_put_price:.2f}")
+
+#PLOTTING
 plt.figure(figsize=(12, 6)) 
-for i in range(min(10, num_simulations)):
+for i in range(num_simulations):
     #Plots i'th simulated asset price path. X-axis is time from 0 to expiration T, y-axis asset price. Lw = line width, alpha = transparency
     #np.linspace generates array of time_steps + 1, evenly spaced values between 0 and T, representing time points at which the asset is simulated
     plt.plot(np.linspace(0, T, time_steps + 1), simulated_paths[i], lw=0.8, alpha=0.7) 
@@ -59,27 +80,110 @@ plt.grid(True)
 plt.axhline(y=K, color='red', linewidth=0.5, linestyle='--', label=f'Strike Price (K) = {K}')
 
 # Add text label for K (strike price)
-plt.text(T, K, 'K', color='red', fontsize=12, verticalalignment='bottom', horizontalalignment='right', fontweight='bold')
+plt.text(T + 0.048, K, 'K', color='red', fontsize=12, verticalalignment='bottom', horizontalalignment='right', fontweight='bold')
 
-# Display parameter values on the plot
-param_text = (
-    f"S0 (Spot Price)= {S0}\n"
-    f"K (Strike Price) = {K}\n"
-    f"T (Time to Expiraiton) = {T}\n"
-    f"R (Risk-Free Rate) = {r}\n"
-    f"σ (Volatility) = {sigma}\n"
-    f"Simulations = {num_simulations}\n"
-    f"Time Steps = {time_steps}"
+# Define table data with 'Constants' and 'Values'
+constants_table_data = [
+    ['S0 (Spot Price)', f'{S0}'],
+    ['K (Strike Price)', f'{K}'],
+    ['T (Time to Expiration)', f'{T}'],
+    ['R (Risk-Free Rate)', f'{r}'],
+    ['σ (Volatility)', f'{sigma}'],
+    ['Simulations', f'{num_simulations}'],
+    ['Time Steps', f'{time_steps}']
+]
+
+# Add the constants table to the plot window
+constants_table = plt.table(
+    cellText=constants_table_data,
+    colLabels=['Constants', 'Values'],
+    cellLoc='center',
+    loc='upper left',  # Position it in the upper left corner
+    colColours=['#f5f5f5']*2,
+    cellColours=[['#f5f5f5']*2]*7,  # Adjust this to match the number of rows
+    bbox=[1.03, 0.50, 0.35, 0.3]  # Adjust position: [x0, y0, width, height]
 )
 
-plt.subplots_adjust(right=0.75)  
-plt.text(1.05, 0.95, param_text, ha='left', va='top', transform=plt.gca().transAxes,
-         fontsize=10, fontweight='bold', bbox=dict(facecolor='white', edgecolor='black', boxstyle='round,pad=0.3'))
+# Adjust font size for the constants table
+constants_table.auto_set_font_size(False)
+constants_table.set_fontsize(8)  # Set the font size for the constants table text
 
-# Add the estimated option prices to the plot
-plt.text(1.05, 0.65, f"Call Option Price: {call_option_price:.2f}", ha='left', va='top', transform=plt.gca().transAxes, fontsize=12, fontweight='bold', color='green')
-plt.text(1.05, 0.60, f"Put Option Price: {put_option_price:.2f}", ha='left', va='top', transform=plt.gca().transAxes, fontsize=12, fontweight='bold', color='red')
+# Auto-adjust column widths for constants table
+constants_table.auto_set_column_width([0, 1, 2])   # Auto-adjust column widths for a neat look
 
+# Calculate the accuracy of Monte Carlo to Black-Scholes
+call_accuracy = abs(mc_call_price - bs_call_price) / bs_call_price * 100  # Percentage error for call option
+put_accuracy = abs(mc_put_price - bs_put_price) / bs_put_price * 100  # Percentage error for put option
+
+# Table data
+table_data = [
+    ['Call Option Price', f'{bs_call_price:.2f}', f'{mc_call_price:.2f}'],
+    ['Put Option Price', f'{bs_put_price:.2f}', f'{mc_put_price:.2f}']
+]
+
+# Define custom cell colors
+cell_colours = [
+    ['#90EE90', '#90EE90', '#90EE90'],  # Green for Call Option Price
+    ['#FF6347', '#FF6347', '#FF6347']   # Red for Put Option Price
+]
+
+# Add the table to the plot window
+table = plt.table(
+    cellText=table_data,
+    colLabels=['Option Type', 'Black-Scholes', 'Monte Carlo'],
+    cellLoc='center',
+    loc='upper right',
+    colColours=['#f5f5f5']*3,
+    cellColours=cell_colours,  # Apply custom cell colors
+    bbox=[1.03, 0.25, 0.35, 0.2]  # Adjust position: [x0, y0, width, height]
+)
+
+# Adjust font size for the table
+table.auto_set_font_size(False)
+table.set_fontsize(8)  # Set the font size for the table text
+
+# Adjust the table size
+table.scale(0.8, 0.8)  # Make the table smaller, change the scale factors as needed
+
+# Auto-adjust column widths
+table.auto_set_column_width([0, 1, 2])  # Auto-adjust column widths for a neat look
+
+# Adjust the layout again to make sure everything fits
+plt.subplots_adjust(right=0.75)
+
+# Calculate the accuracy of Monte Carlo to Black-Scholes
+call_accuracy = abs(mc_call_price - bs_call_price) / bs_call_price * 100  # Percentage error for call option
+put_accuracy = abs(mc_put_price - bs_put_price) / bs_put_price * 100  # Percentage error for put option
+
+# Display the accuracy in a separate table below the main table
+accuracy_table_data = [
+    ['Call Option', f'{call_accuracy:.2f}%'],
+    ['Put Option', f'{put_accuracy:.2f}%']
+]
+
+# Define custom cell colors for accuracy table
+accuracy_cell_colours = [
+    ['#90EE90', '#90EE90'],  # Green for Call Option Accuracy
+    ['#FF6347', '#FF6347']   # Red for Put Option Accuracy
+]
+
+# Add the accuracy table to the plot window
+accuracy_table = plt.table(
+    cellText=accuracy_table_data,
+    colLabels=['Option Type', 'Error'],
+    cellLoc='center',
+    loc='upper right',
+    colColours=['#f5f5f5']*2,
+    cellColours=accuracy_cell_colours,  # Apply custom cell colors
+    bbox=[1.03, 0.05, 0.35, 0.15]  # Position of the accuracy table below the main table
+)
+
+# Adjust font size for the accuracy table
+accuracy_table.auto_set_font_size(False)
+accuracy_table.set_fontsize(8)
+
+# Auto-adjust column widths
+accuracy_table.auto_set_column_width([0, 1])
 
 # Show plot
 plt.show()
