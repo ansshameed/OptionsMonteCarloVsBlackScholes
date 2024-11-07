@@ -1,189 +1,120 @@
-import numpy as np 
+import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm
+from matplotlib.widgets import Slider, Button
 
-#Parameters 
-S0 = 100 # Initial asset price 
-K = 105 # Strike price 
-T = 1 # Time to expiration (1 year) 
-r = 0.05 # Risk-free rate 
-sigma = 0.2 # Volatility (asset price fluctuation)
-num_simulations = 1000 #possible price paths
-time_steps = 100 #Intervals in each simulation/paths. More steps = finer detail
+# Initial parameter values
+S0_init = 100
+K_init = 105
+T_init = 1
+r = 0.05
+sigma_init = 0.2
+num_simulations_init = 5000
+time_steps_init = 100
 
-#SIMULATE RANDOM PRICE PATHS
-dt = T/time_steps #time to expiration/no. time steps (change in time or time step)
-call_payoffs = [] #Difference between strike price and market value of asset at expiration 
-put_payoffs = []
+def calculate_option_prices(S0, K, T, sigma, num_simulations, time_steps):
+    dt = T / time_steps
+    call_payoffs = []
+    put_payoffs = []
+    simulated_paths = []
 
-#Store simulated asset price paths for visualisation 
-simulated_paths = []
+    # Monte Carlo simulation
+    for _ in range(int(num_simulations)):
+        S = S0
+        path = [S]
+        for _ in range(int(time_steps)):
+            Z = np.random.normal()
+            S = S * np.exp((r - 0.5 * sigma ** 2) * dt + sigma * np.sqrt(dt) * Z)
+            path.append(S)
+        call_payoffs.append(max(S - K, 0))
+        put_payoffs.append(max(K - S, 0))
+        simulated_paths.append(path)
 
-#MONTE CARLO SIMULATION
-#Loop through simulations
-for _ in range(num_simulations): 
-    S = S0 #for each simulation reset S to initial asset price
-    path = [S] #Store asset price at each time step for path
+    mc_call_price = np.exp(-r * T) * np.mean(call_payoffs)
+    mc_put_price = np.exp(-r * T) * np.mean(put_payoffs)
+    bs_call_price = black_scholes_call(S0, K, T, r, sigma)
+    bs_put_price = black_scholes_put(S0, K, T, r, sigma)
 
-    for _ in range(time_steps): #loop through steps in simulation to create price path of random price movements (GBM). Repeat until expiration date T, creating complete simulated price path for asset
-        Z = np.random.normal() #Random variable from normal dist. (randomness)
-        S = S * np.exp((r - 0.5 * sigma ** 2) * dt + sigma * np.sqrt(dt) * Z) 
-        path.append(S) #Store asset price at each step
-        #Assign asset price for each time step in path
+    return mc_call_price, mc_put_price, bs_call_price, bs_put_price, simulated_paths
 
-    #Calculates payoff for each simulation
-    call_payoffs.append(max(S - K, 0)) #call option payoff; Current - Strike. Want strike price to be lower to be ITM (below current price)
-    put_payoffs.append(max(K - S, 0)) #put option payoff
+# Black-Scholes formulas
+def black_scholes_call(S0, K, T, r, sigma):
+    d1 = (np.log(S0 / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
+    d2 = d1 - sigma * np.sqrt(T)
+    return S0 * norm.cdf(d1) - K * np.exp(-r * T) * norm.cdf(d2)
 
-    #append current path simulation to list of simulated paths
-    simulated_paths.append(path)
+def black_scholes_put(S0, K, T, r, sigma):
+    d1 = (np.log(S0 / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
+    d2 = d1 - sigma * np.sqrt(T)
+    return K * np.exp(-r * T) * norm.cdf(-d2) - S0 * norm.cdf(-d1)
 
-#BLACK SCHOLES
-def black_scholes_call(S0, K, T, r, sigma): 
-    d1 = (np.log(S0/K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
-    d2 = d1 - sigma * np.sqrt(T) 
-    call_price = S0 * norm.cdf(d1) - K * np.exp(-r * T) * norm.cdf(d2)
-    return call_price
+# Update function to recalculate and display results
+def update_prices(event=None):
+    S0 = s_S0.val
+    K = s_K.val
+    T = s_T.val
+    sigma = s_sigma.val
+    num_simulations = s_num_simulations.val
+    time_steps = s_time_steps.val
 
-def black_scholes_put(S0, K, T, r, sigma): 
-    d1 = (np.log(S0/K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
-    d2 = d1 - sigma * np.sqrt(T) 
-    put_price = K * np.exp(-r * T) * norm.cdf(-d2) - S0 * norm.cdf(-d1)
-    return put_price
+    # Recalculate option prices
+    mc_call, mc_put, bs_call, bs_put, simulated_paths = calculate_option_prices(S0, K, T, sigma, num_simulations, time_steps)
 
-#Calculate option price
-mc_call_price = np.exp(-r * T) * np.mean(call_payoffs) 
-mc_put_price = np.exp(-r * T) * np.mean(put_payoffs)
-bs_call_price = black_scholes_call(S0, K, T, r, sigma)
-bs_put_price = black_scholes_put(S0, K, T, r, sigma)
+    # Clear and plot new paths
+    ax.clear()
+    for path in simulated_paths[:50]:
+        ax.plot(np.linspace(0, T, int(time_steps) + 1), path, lw=0.8, alpha=0.5)
 
-print(f"Black-Scholes Call Option Price:  {bs_call_price:.2f}")
-print(f"Black-Scholes Put Option Price:  {bs_put_price:.2f}")
+    ax.axhline(y=K, color='red', linewidth=0.5, linestyle='--', label=f'Strike Price (K) = {K}')
+    ax.set_title('Simulated Asset Price Paths')
+    ax.set_xlabel('Time to Expiration (Years)')
+    ax.set_ylabel('Asset Price')
+    ax.legend()
+    ax.grid(True)
 
-print(f"Monte Carlo Call Option Price: {mc_call_price:.2f}")
-print(f"Monte Carlo Put Option Price: {mc_put_price:.2f}")
+    # Calculate errors
+    call_error = mc_call - bs_call
+    put_error = mc_put - bs_put
 
-#PLOTTING
-plt.figure(figsize=(12, 6)) 
-for i in range(num_simulations):
-    #Plots i'th simulated asset price path. X-axis is time from 0 to expiration T, y-axis asset price. Lw = line width, alpha = transparency
-    #np.linspace generates array of time_steps + 1, evenly spaced values between 0 and T, representing time points at which the asset is simulated
-    plt.plot(np.linspace(0, T, time_steps + 1), simulated_paths[i], lw=0.8, alpha=0.7) 
+    # Update text box with prices and error
+    text_box.set_text(f"Black-Scholes Call Price: {bs_call:.2f}\n"
+                      f"Black-Scholes Put Price: {bs_put:.2f}\n"
+                      f"Monte Carlo Call Price: {mc_call:.2f} (Error: {call_error:.2f})\n"
+                      f"Monte Carlo Put Price: {mc_put:.2f} (Error: {put_error:.2f})")
 
-# Title and labels
-plt.title('Simulated Asset Price Paths') 
-plt.xlabel('Time to Expiration (Years)') 
-plt.ylabel('Asset Price')
-plt.grid(True)
+# Initial plot setup
+fig, ax = plt.subplots()
+plt.subplots_adjust(left=0.05, bottom=0.45)
 
-# Add bold line at strike price (K)
-plt.axhline(y=K, color='red', linewidth=0.5, linestyle='--', label=f'Strike Price (K) = {K}')
+# Sliders for each parameter
+ax_S0 = plt.axes([0.1, 0.3, 0.65, 0.03])
+ax_K = plt.axes([0.1, 0.25, 0.65, 0.03])
+ax_T = plt.axes([0.1, 0.2, 0.65, 0.03])
+ax_sigma = plt.axes([0.1, 0.15, 0.65, 0.03])
+ax_num_simulations = plt.axes([0.1, 0.1, 0.65, 0.03])
+ax_time_steps = plt.axes([0.1, 0.05, 0.65, 0.03])
 
-# Add text label for K (strike price)
-plt.text(T + 0.048, K, 'K', color='red', fontsize=12, verticalalignment='bottom', horizontalalignment='right', fontweight='bold')
+# Slider creation
+s_S0 = Slider(ax_S0, 'S0 (Spot Price)', 50, 150, valinit=S0_init)
+s_K = Slider(ax_K, 'K (Strike Price)', 50, 150, valinit=K_init)
+s_T = Slider(ax_T, 'T (Time)', 0.5, 3.0, valinit=T_init)
+s_sigma = Slider(ax_sigma, 'Volatility (σ)', 0.1, 0.5, valinit=sigma_init)
+s_num_simulations = Slider(ax_num_simulations, 'Num Simulations', 100, 10000, valinit=num_simulations_init, valstep=100)
+s_time_steps = Slider(ax_time_steps, 'Time Steps', 10, 500, valinit=time_steps_init, valstep=10)
 
-# Define table data with 'Constants' and 'Values'
-constants_table_data = [
-    ['S0 (Spot Price)', f'{S0}'],
-    ['K (Strike Price)', f'{K}'],
-    ['T (Time to Expiration)', f'{T}'],
-    ['R (Risk-Free Rate)', f'{r}'],
-    ['σ (Volatility)', f'{sigma}'],
-    ['Simulations', f'{num_simulations}'],
-    ['Time Steps', f'{time_steps}']
-]
+# Apply button for recalculating option prices
+apply_ax = plt.axes([0.8, 0.02, 0.1, 0.04])
+apply_button = Button(apply_ax, 'Apply', color='lightblue', hovercolor='lightgreen')
+apply_button.on_clicked(update_prices)
 
-# Add the constants table to the plot window
-constants_table = plt.table(
-    cellText=constants_table_data,
-    colLabels=['Constants', 'Values'],
-    cellLoc='center',
-    loc='upper left',  # Position it in the upper left corner
-    colColours=['#f5f5f5']*2,
-    cellColours=[['#f5f5f5']*2]*7,  # Adjust this to match the number of rows
-    bbox=[1.03, 0.50, 0.35, 0.3]  # Adjust position: [x0, y0, width, height]
-)
+# Display initial option prices and error
+mc_call, mc_put, bs_call, bs_put, simulated_paths = calculate_option_prices(S0_init, K_init, T_init, sigma_init, num_simulations_init, time_steps_init)
+for path in simulated_paths[:50]:
+    ax.plot(np.linspace(0, T_init, time_steps_init + 1), path, lw=0.8, alpha=0.5)
 
-# Adjust font size for the constants table
-constants_table.auto_set_font_size(False)
-constants_table.set_fontsize(8)  # Set the font size for the constants table text
+text_box = plt.text(0.85, 0.5, '', transform=ax.transAxes, fontsize=10, bbox=dict(facecolor='white', alpha=0.8))
+update_prices()  # Now this runs after sliders are defined
 
-# Auto-adjust column widths for constants table
-constants_table.auto_set_column_width([0, 1, 2])   # Auto-adjust column widths for a neat look
-
-# Calculate the accuracy of Monte Carlo to Black-Scholes
-call_accuracy = abs(mc_call_price - bs_call_price) / bs_call_price * 100  # Percentage error for call option
-put_accuracy = abs(mc_put_price - bs_put_price) / bs_put_price * 100  # Percentage error for put option
-
-# Table data
-table_data = [
-    ['Call Option Price', f'{bs_call_price:.2f}', f'{mc_call_price:.2f}'],
-    ['Put Option Price', f'{bs_put_price:.2f}', f'{mc_put_price:.2f}']
-]
-
-# Define custom cell colors
-cell_colours = [
-    ['#90EE90', '#90EE90', '#90EE90'],  # Green for Call Option Price
-    ['#FF6347', '#FF6347', '#FF6347']   # Red for Put Option Price
-]
-
-# Add the table to the plot window
-table = plt.table(
-    cellText=table_data,
-    colLabels=['Option Type', 'Black-Scholes', 'Monte Carlo'],
-    cellLoc='center',
-    loc='upper right',
-    colColours=['#f5f5f5']*3,
-    cellColours=cell_colours,  # Apply custom cell colors
-    bbox=[1.03, 0.25, 0.35, 0.2]  # Adjust position: [x0, y0, width, height]
-)
-
-# Adjust font size for the table
-table.auto_set_font_size(False)
-table.set_fontsize(8)  # Set the font size for the table text
-
-# Adjust the table size
-table.scale(0.8, 0.8)  # Make the table smaller, change the scale factors as needed
-
-# Auto-adjust column widths
-table.auto_set_column_width([0, 1, 2])  # Auto-adjust column widths for a neat look
-
-# Adjust the layout again to make sure everything fits
-plt.subplots_adjust(right=0.75)
-
-# Calculate the accuracy of Monte Carlo to Black-Scholes
-call_accuracy = abs(mc_call_price - bs_call_price) / bs_call_price * 100  # Percentage error for call option
-put_accuracy = abs(mc_put_price - bs_put_price) / bs_put_price * 100  # Percentage error for put option
-
-# Display the accuracy in a separate table below the main table
-accuracy_table_data = [
-    ['Call Option', f'{call_accuracy:.2f}%'],
-    ['Put Option', f'{put_accuracy:.2f}%']
-]
-
-# Define custom cell colors for accuracy table
-accuracy_cell_colours = [
-    ['#90EE90', '#90EE90'],  # Green for Call Option Accuracy
-    ['#FF6347', '#FF6347']   # Red for Put Option Accuracy
-]
-
-# Add the accuracy table to the plot window
-accuracy_table = plt.table(
-    cellText=accuracy_table_data,
-    colLabels=['Option Type', 'Error'],
-    cellLoc='center',
-    loc='upper right',
-    colColours=['#f5f5f5']*2,
-    cellColours=accuracy_cell_colours,  # Apply custom cell colors
-    bbox=[1.03, 0.05, 0.35, 0.15]  # Position of the accuracy table below the main table
-)
-
-# Adjust font size for the accuracy table
-accuracy_table.auto_set_font_size(False)
-accuracy_table.set_fontsize(8)
-
-# Auto-adjust column widths
-accuracy_table.auto_set_column_width([0, 1])
-
-# Show plot
 plt.show()
+
+
