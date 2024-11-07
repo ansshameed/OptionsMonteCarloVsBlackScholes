@@ -5,49 +5,49 @@ from matplotlib.widgets import Slider, Button
 import time
 
 # Initial parameter values
-S0_init = 100
-K_init = 105
-T_init = 1
-r = 0.05
-sigma_init = 0.2
-num_simulations_init = 5000
+S0_init = 100 #Spot price/initial price 
+K_init = 105 #Strike price
+T_init = 1 #Time to expiration 
+r = 0.05 #Risk-free interest rate 
+sigma_init = 0.2 #Volatility
+num_simulations_init = 5000 
 time_steps_init = 100
 
 def calculate_option_prices(S0, K, T, sigma, num_simulations, time_steps):
-    dt = T / time_steps
-    call_payoffs = []
+    dt = T / time_steps 
+    call_payoffs = [] #Set of payoffs at end of path/simulation
     put_payoffs = []
-    simulated_paths = []
+    simulated_paths = [] #List of paths
 
-    # Monte Carlo simulation
+    # Monte Carlo simulation - Generates multiple possible price paths using spot price as starting
     for _ in range(int(num_simulations)):
-        S = S0
-        path = [S]
-        for _ in range(int(time_steps)):
-            Z = np.random.normal()
-            S = S * np.exp((r - 0.5 * sigma ** 2) * dt + sigma * np.sqrt(dt) * Z)
-            path.append(S)
-        call_payoffs.append(max(S - K, 0))
+        S = S0 #Starting/spot price 
+        path = [S] #Path starts by storing start price 
+        for _ in range(int(time_steps)): #Loop through time steps for each simulaton 
+            Z = np.random.normal() #Normal distribution 
+            S = S * np.exp((r - 0.5 * sigma ** 2) * dt + sigma * np.sqrt(dt) * Z) #Brownian motion equation generates next price in path 
+            path.append(S) #Append new price to path 
+        call_payoffs.append(max(S - K, 0)) #For each path in simulation calculate intrinsic value
         put_payoffs.append(max(K - S, 0))
-        simulated_paths.append(path)
-
-    mc_call_price = np.exp(-r * T) * np.mean(call_payoffs)
+        simulated_paths.append(path) #Append path
+ 
+    mc_call_price = np.exp(-r * T) * np.mean(call_payoffs) #Calculate MC ption price using average of payoffs
     mc_put_price = np.exp(-r * T) * np.mean(put_payoffs)
-    bs_call_price = black_scholes_call(S0, K, T, r, sigma)
+    bs_call_price = black_scholes_call(S0, K, T, r, sigma) #Calculate Black-Scholes option price 
     bs_put_price = black_scholes_put(S0, K, T, r, sigma)
 
     return mc_call_price, mc_put_price, bs_call_price, bs_put_price, simulated_paths
 
 # Black-Scholes formulas
 def black_scholes_call(S0, K, T, r, sigma):
-    d1 = (np.log(S0 / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
-    d2 = d1 - sigma * np.sqrt(T)
-    return S0 * norm.cdf(d1) - K * np.exp(-r * T) * norm.cdf(d2)
+    d1 = (np.log(S0 / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T)) #Likelihood of reaching strike price at expiration
+    d2 = d1 - sigma * np.sqrt(T) #Probability of option expiring ITM
+    return S0 * norm.cdf(d1) - K * np.exp(-r * T) * norm.cdf(d2) #Black-Scholes Call Pricing Formul 
 
 def black_scholes_put(S0, K, T, r, sigma):
     d1 = (np.log(S0 / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
     d2 = d1 - sigma * np.sqrt(T)
-    return K * np.exp(-r * T) * norm.cdf(-d2) - S0 * norm.cdf(-d1)
+    return K * np.exp(-r * T) * norm.cdf(-d2) - S0 * norm.cdf(-d1) #Black-Scholes Put Pricing Formula
 
 # Update function to recalculate and display results
 def update_prices(event=None):
