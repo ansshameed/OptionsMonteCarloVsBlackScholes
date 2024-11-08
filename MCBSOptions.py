@@ -131,7 +131,7 @@ s_S0 = Slider(ax_S0, 'S0 (Spot Price)', 25, 150, valinit=S0_init)
 s_K = Slider(ax_K, 'K (Strike Price)', 25, 150, valinit=K_init)
 s_T = Slider(ax_T, 'T (Time)', 0.5, 3.0, valinit=T_init)
 s_sigma = Slider(ax_sigma, 'Volatility (σ)', 0.1, 0.5, valinit=sigma_init)
-s_num_simulations = Slider(ax_num_simulations, 'Num Simulations', 100, 10000, valinit=num_simulations_init, valstep=100)
+s_num_simulations = Slider(ax_num_simulations, 'Num Simulations', 10, 10000, valinit=num_simulations_init, valstep=100)
 s_time_steps = Slider(ax_time_steps, 'Time Steps', 10, 500, valinit=time_steps_init, valstep=10)
 
 # Apply button for recalculating option prices
