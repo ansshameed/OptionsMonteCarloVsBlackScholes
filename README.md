@@ -6,8 +6,6 @@ Understanding options pricing by comparing results between the Monte Carlo Simul
 - GUI to see comparability between Monte Carlo and Black Scholes options pricing by visualising graphs. 
 - Visualisation of random walks of asset prices using Brownian Motion.
 
-##Functionality
-
 ### Features 
 - **Monte Carlo Simulation**:
   - Simulates asset price paths using **Geometric Brownian Motion**
