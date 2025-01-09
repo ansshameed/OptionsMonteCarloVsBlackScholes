@@ -10,7 +10,7 @@ Understanding options pricing by comparing results between the Monte Carlo Simul
 - **Monte Carlo Simulation**:
   - Simulates asset price paths using **Geometric Brownian Motion**
   - Calculates **call and put option prices** based on simulated paths
-- **Black-Scholaes Model**:
+- **Black-Scholes Model**:
   - Calculates theoretical call and put option prices using Black-Scholes formula
   - Provides benchmark for comparison with Monte Carlo results
 - **Dynamic Parameter Adjustment**: Interactive Sliders 
